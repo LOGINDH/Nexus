@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office Control Center — Universal Authentication</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            950: '#070A14',
+                            900: '#0B0E1A',
+                            800: '#13182A',
+                            700: '#1C243B',
+                            600: '#283350'
+                        },
+                        indigo: {
+                            500: '#6366F1',
+                            600: '#4F46E5',
+                            700: '#4338CA'
+                        },
+                        purple: {
+                            600: '#7C3AED',
+                            700: '#6D28D9'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0B0E1A;
+        }
+
+        .glass-card {
+            background: rgba(19, 24, 42, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-pill {
+            background: rgba(19, 24, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .active-tab-glow {
+            box-shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-glow {
+            box-shadow: 0 4px 25px -4px rgba(124, 58, 237, 0.5);
+        }
+
+        .btn-glow:hover {
+            box-shadow: 0 6px 30px -2px rgba(124, 58, 237, 0.7);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B0E1A;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #283350;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 antialiased flex flex-col justify-between relative overflow-x-hidden selection:bg-indigo-500 selection:text-white">
+
+    <!-- Glowing Background Gradients -->
+    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-to-tr from-indigo-600/20 via-purple-600/20 to-pink-500/10 blur-[130px] rounded-full pointer-events-none -z-10"></div>
+    <div class="fixed bottom-0 right-0 w-[600px] h-[400px] bg-cyan-600/10 blur-[140px] rounded-full pointer-events-none -z-10"></div>
+
+    <!-- Floating Toast Container -->
+    <div id="toastContainer" class="fixed top-6 right-6 z-50 flex flex-col gap-3 max-w-md w-full px-4 pointer-events-none"></div>
+
+    <!-- EDIT MODAL OVERLAY -->
+    <div id="editModalOverlay" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="glass-card rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
+            <button onclick="closeEditModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <h3 id="editModalTitle" class="text-xl font-bold text-white mb-4">Edit Entry</h3>
+            <div id="editModalBody"></div>
+        </div>
+    </div>
+
+    <div class="w-full max-w-6xl mx-auto px-4 py-6 flex-grow flex flex-col justify-center">
+
+        <!-- Top Header & Brand Bar -->
+        <header class="flex items-center justify-between py-4 mb-8">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-lg text-white shadow-lg shadow-indigo-500/30">
+                    <i data-lucide="shield-check" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">Office Control System</h1>
+                    <p class="text-xs text-slate-400">Strict Hierarchy — Admin manages TLs, TL manages Employees</p>
+                </div>
+            </div>
+
+            <!-- User Auth Status Indicator -->
+            <div id="userHeaderBar" class="hidden items-center gap-4">
+                <div class="flex items-center gap-3 px-4 py-2 rounded-full glass-pill text-sm">
+                    <span id="headerUsername" class="font-medium text-slate-200">Guest</span>
+                    <span id="headerRoleBadge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-slate-700 text-slate-300">Offline</span>
+                </div>
+                <button onclick="handleLogout()" class="px-4 py-2 rounded-full text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 transition-all border border-slate-700/50 flex items-center gap-1.5">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- AUTHENTICATION CONTAINER (SHOWN WHEN LOGGED OUT) -->
+        <main id="authMainSection" class="w-full max-w-2xl mx-auto my-auto">
+            <!-- Centered 4-Tab Pill Bar -->
+            <div class="glass-pill p-1.5 rounded-full mb-8 flex items-center gap-1 overflow-x-auto no-scrollbar shadow-2xl">
+                <button onclick="selectTab('customAuth')" id="tab-customAuth" class="tab-pill-btn active flex-1 py-3 px-4 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap">
+                    <i data-lucide="lock" class="w-4 h-4"></i> Custom Authentication
+                </button>
+                <button onclick="selectTab('adminPortal')" id="tab-adminPortal" class="tab-pill-btn flex-1 py-3 px-4 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200 whitespace-nowrap">
+                    <i data-lucide="crown" class="w-4 h-4"></i> Admin Portal
+                </button>
+                <button onclick="selectTab('teamLeader')" id="tab-teamLeader" class="tab-pill-btn flex-1 py-3 px-4 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200 whitespace-nowrap">
+                    <i data-lucide="briefcase" class="w-4 h-4"></i> Team Leader
+                </button>
+                <button onclick="selectTab('employee')" id="tab-employee" class="tab-pill-btn flex-1 py-3 px-4 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200 whitespace-nowrap">
+                    <i data-lucide="laptop" class="w-4 h-4"></i> Employee Workspace
+                </button>
+            </div>
+
+            <!-- Glassmorphism Form Card -->
+            <div class="glass-card rounded-2xl p-8 shadow-2xl transition-all duration-500 relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <!-- 1. CUSTOM AUTHENTICATION TAB -->
+                <div id="panel-customAuth" class="tab-panel">
+                    <div class="mb-6 text-center">
+                        <div class="w-12 h-12 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto mb-3 border border-indigo-500/20">
+                            <i data-lucide="lock" class="w-6 h-6"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-white tracking-tight">Universal Sign In</h2>
+                        <p class="text-sm text-slate-400 mt-1">Login with any registered account — we'll route you to the right workspace.</p>
+                    </div>
+
+                    <form onsubmit="handleUniversalLogin(event)" class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Username or Email</label>
+                            <input type="text" id="uniUsername" required class="w-full px-4 py-3 bg-navy-950/70 border border-slate-700/60 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" placeholder="username or email">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Password</label>
+                            <input type="password" id="uniPassword" required class="w-full px-4 py-3 bg-navy-950/70 border border-slate-700/60 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold text-sm btn-glow">
+                            Sign In to Workspace
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 2. ADMIN PORTAL TAB -->
+                <div id="panel-adminPortal" class="tab-panel hidden">
+                    <div class="mb-6 text-center">
+                        <h2 class="text-2xl font-bold text-white tracking-tight">Admin Control Portal</h2>
+                        <p class="text-xs text-amber-400/90 mt-2 bg-amber-500/10 border border-amber-500/20 py-2 px-3 rounded-lg inline-block">
+                            Admin accounts are provisioned via system control panel and cannot self-register.
+                        </p>
+                    </div>
+                    <form onsubmit="handlePortalLogin(event, 'ADMIN')" class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Admin Username</label>
+                            <input type="text" id="adminUsername" required class="w-full px-4 py-3 bg-navy-950/70 border border-slate-700/60 rounded-xl text-white text-sm" placeholder="admin">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Password</label>
+                            <input type="password" id="adminPassword" required class="w-full px-4 py-3 bg-navy-950/70 border border-slate-700/60 rounded-xl text-white text-sm" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-rose-500 to-purple-600 text-white font-semibold text-sm btn-glow">
+                            Access Admin Panel
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 3. TEAM LEADER TAB -->
+                <div id="panel-teamLeader" class="tab-panel hidden">
+                    <div class="mb-6 text-center">
+                        <h2 class="text-2xl font-bold text-white tracking-tight">Team Leader Portal</h2>
+                        <p class="text-xs text-slate-400 mt-2 bg-slate-800/60 border border-slate-700/50 py-2 px-3 rounded-lg inline-block">
+                            Team Leader accounts are created by an Administrator.
+                        </p>
+                    </div>
+                    <form onsubmit="handlePortalLogin(event, 'TEAM_LEADER')" class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Team Leader Credentials</label>
+                            <input type="text" id="tlUsername" required class="w-full px-4 py-3 bg-navy-950/70 border border-slate-700/60 rounded-xl text-white text-sm" placeholder="tl_username">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Password</label>
+                            <input type="password" id="tlPassword" required class="w-full px-4 py-3 bg-navy-950/70 border border-slate-700/60 rounded-xl text-white text-sm" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-xs btn-glow">
+                            Login to TL Dashboard
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 4. EMPLOYEE WORKSPACE TAB -->
+                <div id="panel-employee" class="tab-panel hidden">
+                    <div class="mb-6 text-center">
+                        <h2 class="text-2xl font-bold text-white tracking-tight">Employee Workspace Portal</h2>
+                        <p class="text-xs text-slate-400 mt-2 bg-slate-800/60 border border-slate-700/50 py-2 px-3 rounded-lg inline-block">
+                            Employee accounts are created by your Team Leader.
+                        </p>
+                    </div>
+                    <form onsubmit="handlePortalLogin(event, 'EMPLOYEE')" class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Employee Username</label>
+                            <input type="text" id="empLoginUsername" required class="w-full px-4 py-3 bg-navy-950/70 border border-slate-700/60 rounded-xl text-white text-sm" placeholder="employee_username">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Password</label>
+                            <input type="password" id="empLoginPassword" required class="w-full px-4 py-3 bg-navy-950/70 border border-slate-700/60 rounded-xl text-white text-sm" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold text-sm btn-glow">
+                            Login to Employee Workspace
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </main>
+
+        <!-- DASHBOARD CONTAINER (SHOWN WHEN LOGGED IN) -->
+        <main id="dashboardMainSection" class="hidden w-full space-y-6">
+
+            <!-- Role Badge Banner -->
+            <div class="glass-card rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                    <span id="dashRoleChip" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">ADMIN WORKSPACE</span>
+                    <h2 class="text-2xl font-bold text-white mt-2" id="dashWelcomeTitle">Welcome, Admin</h2>
+                    <p class="text-xs text-slate-400 mt-1" id="dashWelcomeSub">Manage system projects, team leaders, employees, and assignments.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="refreshDashboardData()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700/60 flex items-center gap-1.5">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- ADMIN DASHBOARD PANEL -->
+            <div id="dash-ADMIN" class="role-dash-panel hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Create Team Leader Form -->
+                    <div class="glass-card rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="user-plus" class="w-5 h-5 text-indigo-400"></i> Create Team Leader Account
+                        </h3>
+                        <form onsubmit="handleAdminCreateTeamLeader(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Username</label>
+                                <input type="text" id="admTlUsername" required class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="tl_sarah">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Email</label>
+                                <input type="email" id="admTlEmail" required class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="sarah@company.com">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Password</label>
+                                <input type="password" id="admTlPassword" required class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="••••••••">
+                            </div>
+                            <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs">Create Team Leader</button>
+                        </form>
+                    </div>
+
+                    <!-- Create Project Form -->
+                    <div class="glass-card rounded-2xl p-6 lg:col-span-2">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="folder-plus" class="w-5 h-5 text-purple-400"></i> Create & Assign Project
+                        </h3>
+                        <form onsubmit="handleAdminProjectCreate(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Project Title</label>
+                                <input type="text" id="admProjTitle" required class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500" placeholder="E-Commerce Architecture Overhaul">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Description</label>
+                                <textarea id="admProjDesc" rows="2" class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500" placeholder="Project scope details..."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Original Duration (Days)</label>
+                                <input type="number" id="admProjOrig" required value="30" class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Admin Assigned Duration (Days)</label>
+                                <input type="number" id="admProjAssign" required value="25" class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Assign Team Leader</label>
+                                <select id="admProjLeaderSelect" required class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500">
+                                    <option value="">Select Team Leader...</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <button type="submit" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs">Create Project</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Projects Overview Table with Edit & Delete -->
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-bold text-white mb-4">System Projects Overview</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="text-xs font-semibold text-slate-400 uppercase border-b border-slate-700/60">
+                                    <th class="py-3 px-4">ID</th>
+                                    <th class="py-3 px-4">Title</th>
+                                    <th class="py-3 px-4">Leader</th>
+                                    <th class="py-3 px-4">Start → End Date</th>
+                                    <th class="py-3 px-4">Status</th>
+                                    <th class="py-3 px-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admProjectsTableBody" class="divide-y divide-slate-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Registered Team Leaders Management (Strictly Team Leaders Only) -->
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="crown" class="w-5 h-5 text-amber-400"></i> Registered Team Leaders (Admin Management)
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="text-xs font-semibold text-slate-400 uppercase border-b border-slate-700/60">
+                                    <th class="py-3 px-4">ID</th>
+                                    <th class="py-3 px-4">Team Leader</th>
+                                    <th class="py-3 px-4">Email</th>
+                                    <th class="py-3 px-4">Role</th>
+                                    <th class="py-3 px-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admUsersTableBody" class="divide-y divide-slate-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TEAM LEADER DASHBOARD PANEL -->
+            <div id="dash-TEAM_LEADER" class="role-dash-panel hidden space-y-6">
+
+                <!-- Assigned Projects Status Reporting to Admin -->
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="activity" class="w-5 h-5 text-indigo-400"></i> My Assigned Projects — Report Status to Admin
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="text-xs font-semibold text-slate-400 uppercase border-b border-slate-700/60">
+                                    <th class="py-3 px-4">Project ID</th>
+                                    <th class="py-3 px-4">Project Title</th>
+                                    <th class="py-3 px-4">Duration (Days)</th>
+                                    <th class="py-3 px-4">Start → End Date</th>
+                                    <th class="py-3 px-4">Current Status</th>
+                                    <th class="py-3 px-4">Update Status for Admin</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tlProjectsStatusTableBody" class="divide-y divide-slate-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Create Employee Form -->
+                    <div class="glass-card rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="user-plus" class="w-5 h-5 text-emerald-400"></i> Create Employee Account
+                        </h3>
+                        <form onsubmit="handleLeaderCreateEmployee(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Username</label>
+                                <input type="text" id="tlEmpUsername" required class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white" placeholder="emp_david">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Email</label>
+                                <input type="email" id="tlEmpEmail" required class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white" placeholder="david@company.com">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Password</label>
+                                <input type="password" id="tlEmpPassword" required class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white" placeholder="••••••••">
+                            </div>
+                            <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs">Create Employee</button>
+                        </form>
+                    </div>
+
+                    <!-- Assign Task Form -->
+                    <div class="glass-card rounded-2xl p-6 lg:col-span-2">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="check-square" class="w-5 h-5 text-amber-400"></i> Assign Task to Employee
+                        </h3>
+                        <form onsubmit="handleLeaderTaskCreate(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Assigned Project</label>
+                                <select id="tlTaskProjSelect" required class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white">
+                                    <option value="">Select Project...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Task Title</label>
+                                <input type="text" id="tlTaskTitle" required class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white" placeholder="API Integration">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Duration (Days)</label>
+                                <input type="number" id="tlTaskDuration" required value="7" class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Assign Employee</label>
+                                <select id="tlTaskEmpSelect" required class="w-full px-3.5 py-2 bg-navy-950/70 border border-slate-700/60 rounded-lg text-sm text-white">
+                                    <option value="">Select Employee...</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs">Assign Task</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- My Managed Employees Table (Strictly Employees Only) -->
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-emerald-400"></i> My Managed Employees (TL Oversight)
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="text-xs font-semibold text-slate-400 uppercase border-b border-slate-700/60">
+                                    <th class="py-3 px-4">ID</th>
+                                    <th class="py-3 px-4">Employee Name</th>
+                                    <th class="py-3 px-4">Email</th>
+                                    <th class="py-3 px-4">Role</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tlEmployeesTableBody" class="divide-y divide-slate-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Leader Tasks Table -->
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-bold text-white mb-4">Assigned Tasks</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="text-xs font-semibold text-slate-400 uppercase border-b border-slate-700/60">
+                                    <th class="py-3 px-4">Task</th>
+                                    <th class="py-3 px-4">Project</th>
+                                    <th class="py-3 px-4">Employee</th>
+                                    <th class="py-3 px-4">Dates</th>
+                                    <th class="py-3 px-4">Status</th>
+                                    <th class="py-3 px-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tlTasksTableBody" class="divide-y divide-slate-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EMPLOYEE DASHBOARD PANEL -->
+            <div id="dash-EMPLOYEE" class="role-dash-panel hidden space-y-6">
+
+                <!-- Team Leader Info Banner for Employee -->
+                <div class="glass-card rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-emerald-950/40 via-navy-900 to-indigo-950/40 border border-emerald-500/20">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold border border-emerald-500/20">
+                            <i data-lucide="briefcase" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <span class="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Your Assigned Team Leader</span>
+                            <div id="empTlInfoName" class="text-lg font-bold text-white">Loading Team Leader...</div>
+                        </div>
+                    </div>
+                    <div class="px-3.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 font-medium flex items-center gap-2">
+                        <i data-lucide="user-check" class="w-4 h-4"></i> Team Leader Oversight Active
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i> My Assigned Tasks
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="text-xs font-semibold text-slate-400 uppercase border-b border-slate-700/60">
+                                    <th class="py-3 px-4">Task ID</th>
+                                    <th class="py-3 px-4">Title & Scope</th>
+                                    <th class="py-3 px-4">Project</th>
+                                    <th class="py-3 px-4">Assigned By (Team Leader)</th>
+                                    <th class="py-3 px-4">Deadline</th>
+                                    <th class="py-3 px-4">Status</th>
+                                    <th class="py-3 px-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="empTasksTableBody" class="divide-y divide-slate-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="py-6 text-center text-xs text-slate-500 border-t border-slate-800/40 mt-12">
+            Office Control Center © 2026 — Django Function-Based Views & Independent Authentication
+        </footer>
+    </div>
+
+    <!-- Application Script Logic -->
+    <script>
+        let currentUser = null;
+        let currentTokens = null;
+        let currentTab = 'customAuth';
+        let cachedProjects = [];
+        let cachedTasks = [];
+        let cachedUsers = [];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            const storedUser = localStorage.getItem('om_user');
+            const storedTokens = localStorage.getItem('om_tokens');
+
+            if (storedUser && storedTokens) {
+                currentUser = JSON.parse(storedUser);
+                currentTokens = JSON.parse(storedTokens);
+                showDashboard(currentUser.role);
+            }
+        });
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const styles = {
+                error: 'bg-rose-950/90 border-rose-500/50 text-rose-200',
+                success: 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200',
+                warning: 'bg-amber-950/90 border-amber-500/50 text-amber-200',
+                info: 'bg-indigo-950/90 border-indigo-500/50 text-indigo-200'
+            };
+
+            const icons = {
+                error: 'alert-circle',
+                success: 'check-circle-2',
+                warning: 'alert-triangle',
+                info: 'info'
+            };
+
+            toast.className = `p-4 rounded-xl border glass-card shadow-2xl backdrop-blur-xl flex items-start gap-3 transition-all duration-300 pointer-events-auto transform translate-y-2 opacity-0 ${styles[type]}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type]}" class="w-5 h-5 shrink-0 mt-0.5"></i>
+                <div class="flex-1 text-xs font-medium leading-relaxed">${message}</div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function selectTab(tabKey) {
+            currentTab = tabKey;
+            document.querySelectorAll('.tab-pill-btn').forEach(btn => {
+                btn.className = 'tab-pill-btn flex-1 py-3 px-4 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200 whitespace-nowrap';
+            });
+
+            const activeBtn = document.getElementById(`tab-${tabKey}`);
+            activeBtn.className = 'tab-pill-btn active flex-1 py-3 px-4 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 text-white active-tab-glow whitespace-nowrap';
+
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+            document.getElementById(`panel-${tabKey}`).classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModalOverlay').classList.add('hidden');
+        }
+
+        async function fetchAPI(url, method = 'GET', body = null) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (currentTokens && currentTokens.access) {
+                headers['Authorization'] = `Bearer ${currentTokens.access}`;
+            }
+
+            const opts = { method, headers };
+            if (body) opts.body = JSON.stringify(body);
+
+            try {
+                const res = await fetch(url, opts);
+                const text = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    return { error: true, status: res.status, message: `Server Error (${res.status}): Server returned invalid response.` };
+                }
+
+                if (!res.ok) {
+                    let detail = data.detail;
+                    if (!detail) {
+                        if (typeof data === 'object') {
+                            detail = Object.entries(data).map(([k, v]) => Array.isArray(v) ? v.join(', ') : `${k}: ${v}`).join('; ');
+                        } else {
+                            detail = JSON.stringify(data);
+                        }
+                    }
+                    return { error: true, status: res.status, message: detail };
+                }
+                return { error: false, data };
+            } catch (err) {
+                return { error: true, message: err.message };
+            }
+        }
+
+        async function handleUniversalLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('uniUsername').value;
+            const password = document.getElementById('uniPassword').value;
+
+            const res = await fetchAPI('/login/', 'POST', { username, password });
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            currentUser = res.data.user;
+            currentTokens = res.data.tokens;
+            localStorage.setItem('om_user', JSON.stringify(currentUser));
+            localStorage.setItem('om_tokens', JSON.stringify(currentTokens));
+
+            showToast(`Login successful! Routing to ${currentUser.role} workspace...`, 'success');
+            showDashboard(currentUser.role);
+        }
+
+        async function handlePortalLogin(e, requiredRole) {
+            e.preventDefault();
+            let username = '', password = '';
+
+            if (requiredRole === 'ADMIN') {
+                username = document.getElementById('adminUsername').value;
+                password = document.getElementById('adminPassword').value;
+            } else if (requiredRole === 'TEAM_LEADER') {
+                username = document.getElementById('tlUsername').value;
+                password = document.getElementById('tlPassword').value;
+            } else if (requiredRole === 'EMPLOYEE') {
+                username = document.getElementById('empLoginUsername').value;
+                password = document.getElementById('empLoginPassword').value;
+            }
+
+            const res = await fetchAPI('/login/', 'POST', { username, password });
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            const user = res.data.user;
+
+            if (user.role !== requiredRole) {
+                showToast(`This portal is for ${requiredRole} accounts only. Your role is ${user.role}.`, 'error');
+                return;
+            }
+
+            currentUser = user;
+            currentTokens = res.data.tokens;
+            localStorage.setItem('om_user', JSON.stringify(currentUser));
+            localStorage.setItem('om_tokens', JSON.stringify(currentTokens));
+
+            showToast(`Welcome to ${requiredRole} Portal!`, 'success');
+            showDashboard(currentUser.role);
+        }
+
+        function showDashboard(role) {
+            document.getElementById('authMainSection').classList.add('hidden');
+            document.getElementById('dashboardMainSection').classList.remove('hidden');
+
+            document.getElementById('userHeaderBar').classList.remove('hidden');
+            document.getElementById('userHeaderBar').classList.add('flex');
+            document.getElementById('headerUsername').innerText = currentUser.username;
+            document.getElementById('headerRoleBadge').innerText = currentUser.role;
+
+            document.querySelectorAll('.role-dash-panel').forEach(p => p.classList.add('hidden'));
+            document.getElementById(`dash-${role}`).classList.remove('hidden');
+
+            document.getElementById('dashRoleChip').innerText = `${role} WORKSPACE`;
+            document.getElementById('dashWelcomeTitle').innerText = `Welcome, ${currentUser.username}`;
+
+            refreshDashboardData();
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            currentTokens = null;
+            localStorage.removeItem('om_user');
+            localStorage.removeItem('om_tokens');
+
+            document.getElementById('dashboardMainSection').classList.add('hidden');
+            document.getElementById('userHeaderBar').classList.add('hidden');
+            document.getElementById('authMainSection').classList.remove('hidden');
+            selectTab('customAuth');
+            showToast('Logged out successfully.', 'info');
+        }
+
+        async function refreshDashboardData() {
+            if (!currentUser) return;
+
+            if (currentUser.role === 'ADMIN') {
+                loadAdminData();
+            } else if (currentUser.role === 'TEAM_LEADER') {
+                loadLeaderData();
+            } else if (currentUser.role === 'EMPLOYEE') {
+                loadEmployeeData();
+            }
+        }
+
+        async function loadAdminData() {
+            // Strictly fetch and list Team Leaders for Admin
+            const uRes = await fetchAPI('/users/?role=TEAM_LEADER');
+            if (!uRes.error && Array.isArray(uRes.data)) {
+                cachedUsers = uRes.data;
+                const lSelect = document.getElementById('admProjLeaderSelect');
+                lSelect.innerHTML = '<option value="">Select Team Leader...</option>' +
+                    uRes.data.map(u => `<option value="${u.id}">${u.username} (ID: #${u.id})</option>`).join('');
+
+                const uBody = document.getElementById('admUsersTableBody');
+                if (uRes.data.length === 0) {
+                    uBody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-500">No Team Leaders registered yet.</td></tr>';
+                } else {
+                    uBody.innerHTML = uRes.data.map(u => `
+                        <tr>
+                            <td class="py-3 px-4 font-mono text-xs">#${u.id}</td>
+                            <td class="py-3 px-4 font-medium text-white">${u.username}</td>
+                            <td class="py-3 px-4 text-slate-300">${u.email}</td>
+                            <td class="py-3 px-4"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">${u.role}</span></td>
+                            <td class="py-3 px-4 flex items-center gap-2">
+                                <button onclick="openEditUserModal(${u.id})" class="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white">Edit</button>
+                                <button onclick="confirmDeleteUser(${u.id}, '${u.username}')" class="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-xs font-medium text-white">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            }
+
+            const pRes = await fetchAPI('/projects/');
+            if (!pRes.error && Array.isArray(pRes.data)) {
+                cachedProjects = pRes.data;
+                const tbody = document.getElementById('admProjectsTableBody');
+                if (pRes.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-500">No projects recorded.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = pRes.data.map(p => `
+                    <tr>
+                        <td class="py-3 px-4 font-mono text-xs">#${p.id}</td>
+                        <td class="py-3 px-4 font-medium text-white">${p.title}</td>
+                        <td class="py-3 px-4 text-slate-300">${p.assigned_to_leader_detail ? p.assigned_to_leader_detail.username : p.assigned_to_leader}</td>
+                        <td class="py-3 px-4 text-xs text-slate-400">${p.start_date} → ${p.end_date}</td>
+                        <td class="py-3 px-4"><span class="px-2 py-1 rounded-md text-xs font-semibold uppercase bg-indigo-500/20 text-indigo-300">${p.status}</span></td>
+                        <td class="py-3 px-4 flex items-center gap-2">
+                            <button onclick="openEditProjectModal(${p.id})" class="px-2.5 py-1 rounded bg-purple-600 hover:bg-purple-500 text-xs font-medium text-white">Edit</button>
+                            <button onclick="confirmDeleteProject(${p.id}, '${p.title}')" class="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-xs font-medium text-white">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        async function loadLeaderData() {
+            const pRes = await fetchAPI('/projects/assigned/');
+            if (!pRes.error && Array.isArray(pRes.data)) {
+                const projSelect = document.getElementById('tlTaskProjSelect');
+                projSelect.innerHTML = '<option value="">Select Project...</option>' +
+                    pRes.data.map(p => `<option value="${p.id}">${p.title} (${p.start_date} to ${p.end_date})</option>`).join('');
+
+                const tlProjBody = document.getElementById('tlProjectsStatusTableBody');
+                if (pRes.data.length === 0) {
+                    tlProjBody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-500">No projects assigned to you.</td></tr>';
+                } else {
+                    tlProjBody.innerHTML = pRes.data.map(p => `
+                        <tr>
+                            <td class="py-3 px-4 font-mono text-xs">#${p.id}</td>
+                            <td class="py-3 px-4 font-medium text-white">${p.title}</td>
+                            <td class="py-3 px-4 text-slate-300">${p.admin_assigned_duration_days} days</td>
+                            <td class="py-3 px-4 text-xs text-slate-400">${p.start_date} → ${p.end_date}</td>
+                            <td class="py-3 px-4"><span class="px-2 py-1 rounded-md text-xs font-semibold uppercase bg-indigo-500/20 text-indigo-300">${p.status}</span></td>
+                            <td class="py-3 px-4">
+                                <select onchange="updateProjectStatusByTL(${p.id}, this.value)" class="px-2.5 py-1.5 bg-navy-950 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500">
+                                    <option value="PENDING" ${p.status === 'PENDING' ? 'selected' : ''}>PENDING</option>
+                                    <option value="IN_PROGRESS" ${p.status === 'IN_PROGRESS' ? 'selected' : ''}>IN_PROGRESS</option>
+                                    <option value="COMPLETED" ${p.status === 'COMPLETED' ? 'selected' : ''}>COMPLETED</option>
+                                </select>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            }
+
+            // Fetch and list strictly Employees for Team Leader
+            const eRes = await fetchAPI('/employees/');
+            if (!eRes.error && Array.isArray(eRes.data)) {
+                const empSelect = document.getElementById('tlTaskEmpSelect');
+                empSelect.innerHTML = '<option value="">Select Employee...</option>' +
+                    eRes.data.map(e => `<option value="${e.id}">${e.username} (ID: #${e.id})</option>`).join('');
+
+                const tlEmpBody = document.getElementById('tlEmployeesTableBody');
+                if (eRes.data.length === 0) {
+                    tlEmpBody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-slate-500">No employees registered under your team.</td></tr>';
+                } else {
+                    tlEmpBody.innerHTML = eRes.data.map(e => `
+                        <tr>
+                            <td class="py-3 px-4 font-mono text-xs">#${e.id}</td>
+                            <td class="py-3 px-4 font-medium text-white">${e.username}</td>
+                            <td class="py-3 px-4 text-slate-300">${e.email}</td>
+                            <td class="py-3 px-4"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">${e.role}</span></td>
+                        </tr>
+                    `).join('');
+                }
+            }
+
+            const tRes = await fetchAPI('/tasks/');
+            if (!tRes.error && Array.isArray(tRes.data)) {
+                cachedTasks = tRes.data;
+                const tbody = document.getElementById('tlTasksTableBody');
+                if (tRes.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-500">No tasks assigned.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = tRes.data.map(t => `
+                    <tr>
+                        <td class="py-3 px-4 font-medium text-white">${t.title}</td>
+                        <td class="py-3 px-4 text-slate-300">${t.project_title}</td>
+                        <td class="py-3 px-4 text-slate-300">${t.assigned_to_employee_detail ? t.assigned_to_employee_detail.username : t.assigned_to_employee}</td>
+                        <td class="py-3 px-4 text-xs text-slate-400">${t.start_date} → ${t.end_date}</td>
+                        <td class="py-3 px-4"><span class="px-2 py-1 rounded-md text-xs font-semibold uppercase bg-amber-500/20 text-amber-300">${t.status}</span></td>
+                        <td class="py-3 px-4 flex items-center gap-2">
+                            <button onclick="openEditTaskModal(${t.id})" class="px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 text-xs font-medium text-white">Edit</button>
+                            <button onclick="confirmDeleteTask(${t.id}, '${t.title}')" class="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-xs font-medium text-white">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        async function loadEmployeeData() {
+            // Update Team Leader Info Display
+            const empTlElem = document.getElementById('empTlInfoName');
+            if (currentUser.team_leader_detail) {
+                empTlElem.innerText = `${currentUser.team_leader_detail.username} (${currentUser.team_leader_detail.email})`;
+            } else {
+                empTlElem.innerText = 'Assigned Team Leader';
+            }
+
+            const res = await fetchAPI('/tasks/my-tasks/');
+            if (!res.error && Array.isArray(res.data)) {
+                const tbody = document.getElementById('empTasksTableBody');
+                if (res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-slate-500">No tasks assigned to you.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = res.data.map(t => {
+                    const assignerName = t.assigned_by_detail ? t.assigned_by_detail.username : (currentUser.team_leader_detail ? currentUser.team_leader_detail.username : 'Team Leader');
+                    return `
+                        <tr>
+                            <td class="py-3 px-4 font-mono text-xs">#${t.id}</td>
+                            <td class="py-3 px-4"><div class="font-medium text-white">${t.title}</div><div class="text-xs text-slate-400">${t.description}</div></td>
+                            <td class="py-3 px-4 text-slate-300">${t.project_title}</td>
+                            <td class="py-3 px-4"><span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">👤 ${assignerName}</span></td>
+                            <td class="py-3 px-4 text-xs text-slate-400">${t.start_date} → ${t.end_date}</td>
+                            <td class="py-3 px-4"><span class="px-2 py-1 rounded-md text-xs font-semibold uppercase bg-emerald-500/20 text-emerald-300">${t.status}</span></td>
+                            <td class="py-3 px-4">
+                                ${t.status === 'COMPLETED' ? '<span class="text-xs text-emerald-400 font-medium">✓ Completed</span>' : `
+                                    <button onclick="markTaskCompleted(${t.id})" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-all">
+                                        Mark Completed
+                                    </button>
+                                `}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        // TL UPDATES PROJECT STATUS TO ADMIN
+        async function updateProjectStatusByTL(projId, newStatus) {
+            const res = await fetchAPI(`/projects/${projId}/status-update/`, 'PUT', {
+                status: newStatus
+            });
+
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast(`Project #${projId} status updated to ${newStatus} for Admin!`, 'success');
+            refreshDashboardData();
+        }
+
+        // EDIT PROJECT
+        function openEditProjectModal(projId) {
+            const proj = cachedProjects.find(p => p.id === projId);
+            if (!proj) return;
+
+            document.getElementById('editModalTitle').innerText = `Edit Project #${proj.id}`;
+            document.getElementById('editModalBody').innerHTML = `
+                <form onsubmit="submitEditProject(event, ${proj.id})" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Project Title</label>
+                        <input type="text" id="editProjTitle" value="${proj.title}" required class="w-full px-3.5 py-2 bg-navy-950 border border-slate-700 rounded-lg text-sm text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Description</label>
+                        <textarea id="editProjDesc" rows="2" class="w-full px-3.5 py-2 bg-navy-950 border border-slate-700 rounded-lg text-sm text-white">${proj.description || ''}</textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Original Duration</label>
+                            <input type="number" id="editProjOrig" value="${proj.original_duration_days}" required class="w-full px-3.5 py-2 bg-navy-950 border border-slate-700 rounded-lg text-sm text-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Assigned Duration</label>
+                            <input type="number" id="editProjAssign" value="${proj.admin_assigned_duration_days}" required class="w-full px-3.5 py-2 bg-navy-950 border border-slate-700 rounded-lg text-sm text-white">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs">Save Project Changes</button>
+                </form>
+            `;
+            document.getElementById('editModalOverlay').classList.remove('hidden');
+        }
+
+        async function submitEditProject(e, projId) {
+            e.preventDefault();
+            const title = document.getElementById('editProjTitle').value;
+            const description = document.getElementById('editProjDesc').value;
+            const original_duration_days = parseInt(document.getElementById('editProjOrig').value);
+            const admin_assigned_duration_days = parseInt(document.getElementById('editProjAssign').value);
+
+            const res = await fetchAPI(`/projects/${projId}/update/`, 'PUT', {
+                title, description, original_duration_days, admin_assigned_duration_days
+            });
+
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast('Project updated successfully!', 'success');
+            closeEditModal();
+            refreshDashboardData();
+        }
+
+        async function confirmDeleteProject(projId, title) {
+            if (!confirm(`Are you sure you want to delete Project: "${title}"?`)) return;
+
+            const res = await fetchAPI(`/projects/${projId}/delete/`, 'DELETE');
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast('Project deleted successfully!', 'success');
+            refreshDashboardData();
+        }
+
+        // EDIT USER
+        function openEditUserModal(userId) {
+            const u = cachedUsers.find(x => x.id === userId);
+            if (!u) return;
+
+            document.getElementById('editModalTitle').innerText = `Edit User #${u.id} (${u.username})`;
+            document.getElementById('editModalBody').innerHTML = `
+                <form onsubmit="submitEditUser(event, ${u.id})" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Username</label>
+                        <input type="text" id="editUsername" value="${u.username}" required class="w-full px-3.5 py-2 bg-navy-950 border border-slate-700 rounded-lg text-sm text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Email</label>
+                        <input type="email" id="editEmail" value="${u.email}" required class="w-full px-3.5 py-2 bg-navy-950 border border-slate-700 rounded-lg text-sm text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">New Password (leave blank to keep current)</label>
+                        <input type="password" id="editPassword" class="w-full px-3.5 py-2 bg-navy-950 border border-slate-700 rounded-lg text-sm text-white" placeholder="••••••••">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Phone</label>
+                            <input type="text" id="editPhone" value="${u.phone || ''}" class="w-full px-3.5 py-2 bg-navy-950 border border-slate-700 rounded-lg text-sm text-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Address</label>
+                            <input type="text" id="editAddress" value="${u.address || ''}" class="w-full px-3.5 py-2 bg-navy-950 border border-slate-700 rounded-lg text-sm text-white">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs">Save User Changes</button>
+                </form>
+            `;
+            document.getElementById('editModalOverlay').classList.remove('hidden');
+        }
+
+        async function submitEditUser(e, userId) {
+            e.preventDefault();
+            const username = document.getElementById('editUsername').value;
+            const email = document.getElementById('editEmail').value;
+            const password = document.getElementById('editPassword').value;
+            const phone = document.getElementById('editPhone').value;
+            const address = document.getElementById('editAddress').value;
+
+            const body = { username, email, phone, address };
+            if (password) body.password = password;
+
+            const res = await fetchAPI(`/users/${userId}/update/`, 'PUT', body);
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast('User account updated successfully!', 'success');
+            closeEditModal();
+            refreshDashboardData();
+        }
+
+        async function confirmDeleteUser(userId, username) {
+            if (!confirm(`Are you sure you want to delete User: "${username}"?`)) return;
+
+            const res = await fetchAPI(`/users/${userId}/delete/`, 'DELETE');
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast('User account deleted successfully!', 'success');
+            refreshDashboardData();
+        }
+
+        // EDIT TASK
+        function openEditTaskModal(taskId) {
+            const task = cachedTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            document.getElementById('editModalTitle').innerText = `Edit Task #${task.id}`;
+            document.getElementById('editModalBody').innerHTML = `
+                <form onsubmit="submitEditTask(event, ${task.id})" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Task Title</label>
+                        <input type="text" id="editTaskTitle" value="${task.title}" required class="w-full px-3.5 py-2 bg-navy-950 border border-slate-700 rounded-lg text-sm text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Duration (Days)</label>
+                        <input type="number" id="editTaskDuration" value="${task.leader_assigned_duration_days}" required class="w-full px-3.5 py-2 bg-navy-950 border border-slate-700 rounded-lg text-sm text-white">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs">Save Task Changes</button>
+                </form>
+            `;
+            document.getElementById('editModalOverlay').classList.remove('hidden');
+        }
+
+        async function submitEditTask(e, taskId) {
+            e.preventDefault();
+            const title = document.getElementById('editTaskTitle').value;
+            const leader_assigned_duration_days = parseInt(document.getElementById('editTaskDuration').value);
+
+            const res = await fetchAPI(`/tasks/${taskId}/update/`, 'PUT', {
+                title, leader_assigned_duration_days
+            });
+
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast('Task updated successfully!', 'success');
+            closeEditModal();
+            refreshDashboardData();
+        }
+
+        async function confirmDeleteTask(taskId, title) {
+            if (!confirm(`Are you sure you want to delete Task: "${title}"?`)) return;
+
+            const res = await fetchAPI(`/tasks/${taskId}/delete/`, 'DELETE');
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast('Task deleted successfully!', 'success');
+            refreshDashboardData();
+        }
+
+        // CREATE HANDLERS
+        async function handleAdminCreateTeamLeader(e) {
+            e.preventDefault();
+            const res = await fetchAPI('/office-admin/create-team-leader/', 'POST', {
+                username: document.getElementById('admTlUsername').value,
+                email: document.getElementById('admTlEmail').value,
+                password: document.getElementById('admTlPassword').value
+            });
+
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast(`Team Leader account '${res.data.user.username}' created successfully!`, 'success');
+            document.getElementById('admTlUsername').value = '';
+            document.getElementById('admTlEmail').value = '';
+            document.getElementById('admTlPassword').value = '';
+            refreshDashboardData();
+        }
+
+        async function handleLeaderCreateEmployee(e) {
+            e.preventDefault();
+            const res = await fetchAPI('/team-leader/create-employee/', 'POST', {
+                username: document.getElementById('tlEmpUsername').value,
+                email: document.getElementById('tlEmpEmail').value,
+                password: document.getElementById('tlEmpPassword').value
+            });
+
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast(`Employee account '${res.data.user.username}' created successfully!`, 'success');
+            document.getElementById('tlEmpUsername').value = '';
+            document.getElementById('tlEmpEmail').value = '';
+            document.getElementById('tlEmpPassword').value = '';
+            refreshDashboardData();
+        }
+
+        async function handleAdminProjectCreate(e) {
+            e.preventDefault();
+            const orig = parseInt(document.getElementById('admProjOrig').value) || 0;
+            const assign = parseInt(document.getElementById('admProjAssign').value) || 0;
+
+            if (assign > orig) {
+                showToast(`Invalid Duration! Admin Assigned Duration (${assign} days) cannot exceed Original Duration (${orig} days).`, 'warning');
+                return;
+            }
+
+            const res = await fetchAPI('/projects/create/', 'POST', {
+                title: document.getElementById('admProjTitle').value,
+                description: document.getElementById('admProjDesc').value,
+                original_duration_days: orig,
+                admin_assigned_duration_days: assign,
+                assigned_to_leader: parseInt(document.getElementById('admProjLeaderSelect').value)
+            });
+
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast('Project created and assigned successfully!', 'success');
+            refreshDashboardData();
+        }
+
+        async function handleLeaderTaskCreate(e) {
+            e.preventDefault();
+            const res = await fetchAPI('/tasks/create/', 'POST', {
+                project: parseInt(document.getElementById('tlTaskProjSelect').value),
+                title: document.getElementById('tlTaskTitle').value,
+                description: 'Assigned task',
+                leader_assigned_duration_days: parseInt(document.getElementById('tlTaskDuration').value),
+                assigned_to_employee: parseInt(document.getElementById('tlTaskEmpSelect').value)
+            });
+
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast('Task created and assigned to employee!', 'success');
+            refreshDashboardData();
+        }
+
+        async function markTaskCompleted(taskId) {
+            const notes = prompt("Enter submission notes:", "Task completed.");
+            if (notes === null) return;
+
+            const res = await fetchAPI(`/tasks/${taskId}/status-update/`, 'PUT', {
+                status: 'COMPLETED',
+                submission_notes: notes
+            });
+
+            if (res.error) {
+                showToast(res.message, 'error');
+                return;
+            }
+
+            showToast('Task marked as COMPLETED!', 'success');
+            refreshDashboardData();
+        }
+    </script>
+</body>
+</html>
