@@ -21,6 +21,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('app_1/', include('app_1.urls')), 
     path('E_commerce/', include('E_commerce.urls')),
-    path('', include('OFFICE_MANAGER.urls')),
+    path('echelon_flow/', include('echelon_flow.urls')),
 ]
 
