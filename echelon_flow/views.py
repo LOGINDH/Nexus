@@ -1055,3 +1055,9 @@ def update_task_status(request, task_id):
             }
         }
     )
+
+def dashboard(request):
+    return render(
+        request,
+        "dashboard.html"
+    )    

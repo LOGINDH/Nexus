@@ -38,4 +38,10 @@ urlpatterns = [
     path("employee/tasks/",views.employee_tasks),
     path("employee/tasks/<int:task_id>/status/",views.update_task_status),
 
+    # =========================
+    # DASHBOARD
+    # =========================
+
+    path("",views.dashboard),
+
 ]
