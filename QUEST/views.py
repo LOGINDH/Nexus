@@ -34,7 +34,7 @@ from .validators import (
 # ============================================================
 # HOME / API STATUS
 # ============================================================
-csrf_exempt
+@csrf_exempt
 def home(request):
 
     return JsonResponse({
@@ -522,7 +522,7 @@ def student_dashboard(request):
 # ============================================================
 # STAFF DASHBOARD
 # ============================================================
-csrf_exempt
+@csrf_exempt
 @staff_required
 def staff_dashboard(request):
 
@@ -777,7 +777,7 @@ def create_quiz(request):
 # ============================================================
 # GENERATE QUIZ FROM MATERIAL
 # ============================================================
-csrf_exempt
+@csrf_exempt
 @staff_required
 def generate_material_quiz(
     request,
@@ -901,7 +901,7 @@ def generate_material_quiz(
 # ============================================================
 # AI SPECIFICATION
 # ============================================================
-csrf_exempt
+@csrf_exempt
 @staff_required
 def generate_ai_specification(
     request,
@@ -1133,7 +1133,7 @@ def import_ai_quiz(
 # ============================================================
 # QUIZ PREVIEW
 # ============================================================
-csrf_exempt
+@csrf_exempt
 @staff_required
 def quiz_preview(
     request,
