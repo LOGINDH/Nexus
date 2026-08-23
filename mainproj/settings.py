@@ -34,21 +34,26 @@ CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
     'https://quest-psi-umber.vercel.app',
-    'http://localhost:3000',
     'http://localhost:5173',
-    'http://127.0.0.1:3000',
+    'http://localhost:5174',
+    'http://localhost:3000',
     'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://127.0.0.1:3000',
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     'https://quest-psi-umber.vercel.app',
     'https://*.vercel.app',
     'https://*.up.railway.app',
+    'https://nexus-production-7fa0.up.railway.app',
     'https://roman-jolly-operable.ngrok-free.dev',
     'http://localhost:5173',
+    'http://localhost:5174',
     'http://localhost:3000',
     'http://localhost:8000',
     'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:8000',
 ]
@@ -66,11 +71,12 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # Cross-Site Cookie & Session Settings for Vercel <-> Railway
-if not DEBUG:
-    SESSION_COOKIE_SAMESITE = 'None'
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SAMESITE = 'None'
-    CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = False
 
 
 
