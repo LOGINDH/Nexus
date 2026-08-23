@@ -14,4 +14,7 @@ whitenoise>=6.6.0
 firebase-functions>=0.2.0
 firebase-admin>=6.5.0
 werkzeug>=3.0.0
+pymysql>=1.1.0
+dj-database-url>=2.1.0
+
 
