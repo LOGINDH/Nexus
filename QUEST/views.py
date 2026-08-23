@@ -200,42 +200,24 @@ def student_login(request):
             "message": "Invalid JSON."
         }, status=400)
 
-    user_code = data.get(
-        "user_code",
-        ""
-    ).strip().upper()
-
-    password = data.get(
-        "password",
-        ""
-    )
+    user_code = str(data.get("user_code") or data.get("username") or data.get("student_id") or "").strip()
+    password = str(data.get("password", ""))
 
     user = User.objects.filter(
-
-        user_code=user_code,
-
-        password=password,
-
         role="student",
-
         is_active=True
-
+    ).filter(
+        user_code__iexact=user_code
     ).first()
 
-    if not user:
-
+    if not user or user.password != password:
         return JsonResponse({
-
             "success": False,
-
             "message": "Invalid student credentials."
-
         }, status=401)
 
     request.session["user_id"] = user.id
-
     request.session["role"] = "student"
-
     request.session["user_code"] = user.user_code
 
     return JsonResponse({
@@ -286,42 +268,25 @@ def staff_login(request):
             "message": "Invalid JSON."
         }, status=400)
 
-    user_code = data.get(
-        "user_code",
-        ""
-    ).strip().upper()
+    user_code = str(data.get("user_code") or data.get("username") or data.get("staff_id") or "").strip()
+    password = str(data.get("password", ""))
 
-    password = data.get(
-        "password",
-        ""
-    )
-
+    # Find staff user matching user_code (case-insensitive) or email
     user = User.objects.filter(
-
-        user_code=user_code,
-
-        password=password,
-
         role="staff",
-
         is_active=True
-
+    ).filter(
+        user_code__iexact=user_code
     ).first()
 
-    if not user:
-
+    if not user or user.password != password:
         return JsonResponse({
-
             "success": False,
-
             "message": "Invalid staff credentials."
-
         }, status=401)
 
     request.session["user_id"] = user.id
-
     request.session["role"] = "staff"
-
     request.session["user_code"] = user.user_code
 
     return JsonResponse({
