@@ -45,6 +45,12 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.vercel.app',
     'https://*.up.railway.app',
     'https://roman-jolly-operable.ngrok-free.dev',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:8000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:8000',
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -58,6 +64,14 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Cross-Site Cookie & Session Settings for Vercel <-> Railway
+if not DEBUG:
+    SESSION_COOKIE_SAMESITE = 'None'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SAMESITE = 'None'
+    CSRF_COOKIE_SECURE = True
+
 
 
 
