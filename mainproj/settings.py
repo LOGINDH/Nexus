@@ -28,11 +28,36 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = ['*']
 
-CSRF_TRUSTED_ORIGINS = config(
-    'CSRF_TRUSTED_ORIGINS',
-    default='https://roman-jolly-operable.ngrok-free.dev',
-    cast=Csv()
-)
+# CORS and CSRF Settings for Vercel Frontend & Local Development
+CORS_ALLOW_ALL_ORIGINS = True  # Allows requests from any frontend origin (safe for APIs)
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    'https://quest-psi-umber.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://quest-psi-umber.vercel.app',
+    'https://*.vercel.app',
+    'https://*.up.railway.app',
+    'https://roman-jolly-operable.ngrok-free.dev',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 
 
