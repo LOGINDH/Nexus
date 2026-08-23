@@ -102,7 +102,7 @@ if database_url:
     DATABASES = {
         'default': dj_database_url.parse(database_url, conn_max_age=600)
     }
-elif db_host:
+elif db_host and db_host != 'localhost':
     DATABASES = {
         'default': {
             'ENGINE': config('DB_ENGINE', default='django.db.backends.mysql'),
@@ -114,14 +114,11 @@ elif db_host:
         }
     }
 else:
+    # Safe fallback if MySQL database is not connected yet
     DATABASES = {
         'default': {
-            'ENGINE': config('DB_ENGINE', default='django.db.backends.mysql'),
-            'NAME': 'test',
-            'USER': 'root',
-            'PASSWORD': '',
-            'HOST': 'localhost',
-            'PORT': '3306',
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 
