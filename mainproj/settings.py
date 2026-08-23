@@ -92,19 +92,36 @@ import dj_database_url
 
 database_url = config('DATABASE_URL', default=config('MYSQL_URL', default=config('MYSQL_PRIVATE_URL', default='')))
 
+db_host = config('DB_HOST', default=config('MYSQLHOST', default=''))
+db_name = config('DB_NAME', default=config('MYSQLDATABASE', default=''))
+db_user = config('DB_USER', default=config('MYSQLUSER', default=''))
+db_password = config('DB_PASSWORD', default=config('MYSQLPASSWORD', default=''))
+db_port = config('DB_PORT', default=config('MYSQLPORT', default='3306'))
+
 if database_url:
     DATABASES = {
         'default': dj_database_url.parse(database_url, conn_max_age=600)
+    }
+elif db_host:
+    DATABASES = {
+        'default': {
+            'ENGINE': config('DB_ENGINE', default='django.db.backends.mysql'),
+            'NAME': db_name,
+            'USER': db_user,
+            'PASSWORD': db_password,
+            'HOST': db_host,
+            'PORT': db_port or '3306',
+        }
     }
 else:
     DATABASES = {
         'default': {
             'ENGINE': config('DB_ENGINE', default='django.db.backends.mysql'),
-            'NAME': config('DB_NAME', default='test'),
-            'USER': config('DB_USER', default='root'),
-            'PASSWORD': config('DB_PASSWORD', default=''),
-            'HOST': config('DB_HOST', default='localhost'),
-            'PORT': config('DB_PORT', default='3306') or '3306',
+            'NAME': 'test',
+            'USER': 'root',
+            'PASSWORD': '',
+            'HOST': 'localhost',
+            'PORT': '3306',
         }
     }
 
