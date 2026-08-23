@@ -8,6 +8,20 @@ from django.http import JsonResponse
 
 from .models import User, Project, Task
 
+from django.shortcuts import get_object_or_404, render
+from .models import Product
+
+
+def product_qr_details(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+
+    return JsonResponse({
+        "id": product.id,
+        "name": product.name,
+        "description": product.description,
+        "price": str(product.price),
+    })
+
 
 # ============================================================
 # LOGIN

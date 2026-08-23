@@ -353,3 +353,8 @@ class TaskAdmin(ImportExportModelAdmin):
     ordering = (
         "-created_at",
     )
+
+from django.contrib import admin
+from .models import Product
+
+admin.site.register(Product)    

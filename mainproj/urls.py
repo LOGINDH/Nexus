@@ -17,10 +17,21 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path,include
 
+
+
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView,
+)
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+  
     path('app_1/', include('app_1.urls')), 
     path('E_commerce/', include('E_commerce.urls')),
     path('echelon_flow/', include('echelon_flow.urls')),
+    path("QUEST/",include("QUEST.urls")),
 ]
 

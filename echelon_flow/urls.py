@@ -1,4 +1,5 @@
 from django.urls import path
+from .views import product_qr_details
 
 from . import views
 
@@ -11,7 +12,11 @@ urlpatterns = [
 
     path("login/",views.login),
 
-
+    path(
+        "product/<int:product_id>/",
+        product_qr_details,
+        name="product_qr_details"
+    ),
     # =========================
     # ADMIN
     # =========================
@@ -38,10 +43,6 @@ urlpatterns = [
     path("employee/tasks/",views.employee_tasks),
     path("employee/tasks/<int:task_id>/status/",views.update_task_status),
 
-    # =========================
-    # DASHBOARD
-    # =========================
-
-    path("",views.dashboard),
+    
 
 ]
