@@ -4,6 +4,10 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+
 from .models import (
     User,
     Quiz,
@@ -246,32 +250,20 @@ def student_login(request):
 # ============================================================
 
 @csrf_exempt
+@api_view(['POST'])
 def staff_login(request):
 
-    if request.method != "POST":
+    data = request.data if hasattr(request, 'data') else {}
+    if not data and request.body:
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            data = {}
 
-        return JsonResponse({
-            "success": False,
-            "message": "Only POST method is allowed."
-        }, status=405)
-
-    try:
-
-        data = json.loads(
-            request.body
-        )
-
-    except json.JSONDecodeError:
-
-        return JsonResponse({
-            "success": False,
-            "message": "Invalid JSON."
-        }, status=400)
-
-    user_code = str(data.get("user_code") or data.get("username") or data.get("staff_id") or "").strip()
+    user_code = str(data.get("user_code") or data.get("username") or data.get("identity") or data.get("staff_id") or "").strip()
     password = str(data.get("password", ""))
 
-    # Find staff user matching user_code (case-insensitive) or email
+    # Find staff user matching user_code (case-insensitive)
     user = User.objects.filter(
         role="staff",
         is_active=True
@@ -280,34 +272,26 @@ def staff_login(request):
     ).first()
 
     if not user or user.password != password:
-        return JsonResponse({
+        return Response({
             "success": False,
             "message": "Invalid staff credentials."
-        }, status=401)
+        }, status=status.HTTP_401_UNAUTHORIZED)
 
     request.session["user_id"] = user.id
     request.session["role"] = "staff"
     request.session["user_code"] = user.user_code
 
-    return JsonResponse({
-
+    return Response({
         "success": True,
-
         "message": "Staff login successful.",
-
         "user": {
-
             "id": user.id,
-
             "user_code": user.user_code,
-
             "name": user.name,
-
             "email": user.email,
-
             "role": user.role
         }
-    })
+    }, status=status.HTTP_200_OK)
 
 
 # ============================================================
@@ -488,67 +472,75 @@ def student_dashboard(request):
 # STAFF DASHBOARD
 # ============================================================
 @csrf_exempt
+@api_view(['GET', 'POST'])
 @staff_required
 def staff_dashboard(request):
 
     quizzes = Quiz.objects.filter(
-
         created_by=request.current_user
+    ).order_by("-created_at")
 
-    ).order_by(
-        "-created_at"
-    )
+    attempts = Attempt.objects.filter(
+        quiz__created_by=request.current_user
+    ).select_related("quiz", "student").order_by("-submitted_at")
+
+    total_attempts = attempts.count()
+    if total_attempts > 0:
+        total_score_sum = sum(
+            (attempt.score / attempt.total_questions * 100) if attempt.total_questions else 0 
+            for attempt in attempts
+        )
+        avg_score = round(total_score_sum / total_attempts, 2)
+    else:
+        avg_score = 0
 
     quiz_data = []
-
     for quiz in quizzes:
-
         quiz_data.append({
-
             "id": quiz.id,
-
             "title": quiz.title,
-
             "topics": quiz.topics,
-
             "difficulty": quiz.difficulty,
-
             "question_count": quiz.question_count,
-
-            "generation_mode":
-                quiz.generation_mode,
-
-            "status":
-                quiz.status,
-
-            "quiz_code":
-                quiz.quiz_code,
-
-            "created_at":
-                quiz.created_at,
-
-            "attempt_count":
-                quiz.attempts.count()
+            "generation_mode": quiz.generation_mode,
+            "status": quiz.status,
+            "quiz_code": quiz.quiz_code,
+            "created_at": quiz.created_at,
+            "attempt_count": quiz.attempts.count()
         })
 
-    return JsonResponse({
+    attempt_data = []
+    for attempt in attempts:
+        percentage = 0
+        if attempt.total_questions:
+            percentage = round((attempt.score / attempt.total_questions) * 100, 2)
+        attempt_data.append({
+            "id": attempt.id,
+            "quiz_id": attempt.quiz.id,
+            "quiz_title": attempt.quiz.title,
+            "student_name": attempt.student.name if attempt.student else "Student",
+            "score": attempt.score,
+            "total_questions": attempt.total_questions,
+            "percentage": percentage,
+            "submitted_at": attempt.submitted_at
+        })
 
+    return Response({
         "success": True,
-
+        "total_quizzes": quizzes.count(),
+        "active_quizzes": quizzes.filter(status="active").count(),
+        "total_attempts": total_attempts,
+        "average_score": avg_score,
+        "quizzes": quiz_data,
+        "attempts": attempt_data,
         "user": {
-
-            "user_code":
-                request.current_user.user_code,
-
-            "name":
-                request.current_user.name,
-
-            "role":
-                request.current_user.role
-        },
-
-        "quizzes": quiz_data
-    })
+            "id": request.current_user.id,
+            "user_code": request.current_user.user_code,
+            "name": request.current_user.name,
+            "email": request.current_user.email,
+            "role": request.current_user.role
+        }
+    }, status=status.HTTP_200_OK)
 
 
 # ============================================================
